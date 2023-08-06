@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import {S} from 'ts-toolbelt';
 import { assert, getModularInstance, Deferred } from '@firebase/util';
 
 import {
@@ -91,7 +91,8 @@ import {
   Query as Query,
   DatabaseReference,
   Unsubscribe,
-  ThenableReference
+  ThenableReference,
+  ResolveGenericDBType,
 } from './Reference';
 
 /**
@@ -285,7 +286,7 @@ export class ReferenceImpl extends QueryImpl implements DatabaseReference {
  * a Database location. It cannot be modified and will never change (to modify
  * data, you always call the `set()` method on a `Reference` directly).
  */
-export class DataSnapshot {
+export class DataSnapshot<TDB extends {}, TPath extends string[]> {
   /**
    * @param _node - A SnapshotNode to wrap.
    * @param ref - The location this snapshot came from.
@@ -297,7 +298,7 @@ export class DataSnapshot {
     /**
      * The location of this DataSnapshot.
      */
-    readonly ref: DatabaseReference,
+    readonly ref: DatabaseReference<TDB, TPath>,
     readonly _index: Index
   ) {}
 
@@ -458,8 +459,8 @@ export class DataSnapshot {
    *   Array, string, number, boolean, or `null`).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  val(): any {
-    return this._node.val();
+  val(): ResolveGenericDBType<TDB, TPath, false> {
+    return this._node.val() as any;
   }
 }
 
@@ -484,7 +485,7 @@ export interface IteratedDataSnapshot extends DataSnapshot {
  *   pointing to the provided path. Otherwise, a `Reference` pointing to the
  *   root of the Database.
  */
-export function ref(db: Database, path?: string): DatabaseReference {
+export function ref<TPath extends string, TDB extends {}>(db: Database<TDB>, path?: TPath): DatabaseReference<TDB, S.Split<TPath, '/'>> {
   db = getModularInstance(db);
   db._checkNotDeleted('ref');
   return path !== undefined ? child(db._root, path) : db._root;
@@ -675,7 +676,7 @@ export function remove(ref: DatabaseReference): Promise<void> {
  *   array, or null).
  * @returns Resolves when write to server is complete.
  */
-export function set(ref: DatabaseReference, value: unknown): Promise<void> {
+export function set<TDB extends {}, TPath extends string[]>(ref: DatabaseReference<TDB, TPath>, value: ResolveGenericDBType<TDB, TPath, true>): Promise<void> {
   ref = getModularInstance(ref);
   validateWritablePath('set', ref._path);
   validateFirebaseDataArg('set', value, ref._path, false);
@@ -813,7 +814,7 @@ export function update(ref: DatabaseReference, values: object): Promise<void> {
  * available, or rejects if the client is unable to return a value (e.g., if the
  * server is unreachable and there is nothing cached).
  */
-export function get(query: Query): Promise<DataSnapshot> {
+export function get<TDB extends {}, TPath extends string[]>(query: Query<TDB, TPath>): Promise<DataSnapshot<TDB, TPath>> {
   query = getModularInstance(query) as QueryImpl;
   const callbackContext = new CallbackContext(() => {});
   const container = new ValueEventRegistration(callbackContext);

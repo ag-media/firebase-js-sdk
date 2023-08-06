@@ -1,5 +1,5 @@
 {
-  "name": "@firebase/database",
+  "name": "@ag-media/firebase-database",
   "version": "1.0.1",
   "description": "",
   "author": "Firebase <firebase-support@google.com> (https://firebase.google.com/)",
@@ -54,13 +54,14 @@
     "@firebase/component": "0.6.4",
     "@firebase/auth-interop-types": "0.2.1",
     "faye-websocket": "0.11.4",
+    "ts-toolbelt": "9.6.0",
     "tslib": "^2.1.0"
   },
   "devDependencies": {
     "@firebase/app": "0.9.15",
     "rollup": "2.79.1",
     "rollup-plugin-typescript2": "0.31.2",
-    "typescript": "4.7.4"
+    "typescript": "5.0.2"
   },
   "repository": {
     "directory": "packages/database",

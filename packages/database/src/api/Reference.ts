@@ -1,6 +1,9 @@
+import {L} from 'ts-toolbelt';
+
 import { Repo } from '../core/Repo';
 import { Path } from '../core/util/Path';
 import { QueryContext } from '../core/view/EventRegistration';
+
 
 /**
  * @license
@@ -34,9 +37,9 @@ import { QueryContext } from '../core/view/EventRegistration';
  * See {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data}
  * for more information.
  */
-export interface Query extends QueryContext {
+export interface Query<TDB extends {}, TPath extends string[]> extends QueryContext {
   /** The `DatabaseReference` for the `Query`'s location. */
-  readonly ref: DatabaseReference;
+  readonly ref: DatabaseReference<TDB, TPath>;
 
   /**
    * Returns whether or not the current and provided queries represent the same
@@ -79,6 +82,79 @@ export interface Query extends QueryContext {
   toString(): string;
 }
 
+/* eslint-disable */
+export const ServerTimestamp = {
+  '.sv': 'timestamp',
+} as const;
+export type T_DB_ServerTimestamp = typeof ServerTimestamp;
+export const ServerIncrement = (delta: number): T_DB_ServerIncrement => ({
+  '.sv': {
+      'increment': delta,
+  },
+});
+export interface T_DB_ServerIncrement {
+  '.sv': {
+      'increment': number,
+  },
+}
+
+export type T_RTDBPath = string[] | readonly string[];
+
+export type RTDBPrimitive = string | number | boolean | null;
+export type T_GenericRTDB = RTDBPrimitive | {
+  [key: string]: T_GenericRTDB,
+};
+export type T_RTDBUpdate = Record<string, string | number | boolean | T_DB_ServerTimestamp | T_DB_ServerIncrement | null | object>;
+
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P];
+};
+
+export type _CheckRTDBPath<TObjectType, TPath extends any[]> =
+  TPath extends []
+  ? []
+  : TPath extends [any, ...infer Tail]
+      ? TPath[0] extends keyof Exclude<TObjectType, undefined>
+          ? Tail extends []
+              ? [TPath[0]]
+              : [TPath[0], ..._CheckRTDBPath<Exclude<TObjectType, undefined>[TPath[0]], Tail>]
+          : ['RTDB path segment not found']
+      : ['RTDB path not found'];
+export type CheckRTDBPath<TDB extends {}, TPath extends T_RTDBPath> = _CheckRTDBPath<TDB, TPath extends readonly string[] ? Mutable<TPath> : TPath>;
+
+export type ResolveType<TObjectType, TPath extends any[], TWritable extends boolean = false> =
+  TPath extends []
+  ? TWritable extends false
+      ? TObjectType
+      : TObjectType extends number
+          ? TObjectType | T_DB_ServerIncrement
+          : TObjectType
+  : TPath extends [any, ...infer Tail]
+      ? TPath[0] extends keyof Exclude<TObjectType, undefined>
+          ? ResolveType<Exclude<TObjectType, undefined>[TPath[0]], Tail, TWritable>
+          : any
+      : any;
+
+/**
+ * Resolve a path to the type of data stored at that path in the RTDB
+ */
+export type ResolveGenericDBType<TDB extends {}, TPath extends string[], TWritable extends boolean = false> =
+  TWritable extends true 
+    ? ResolveType<TDB, TPath extends readonly string[] ? Mutable<TPath> : TPath, true>
+    : Readonly<ResolveType<TDB, TPath extends readonly string[] ? Mutable<TPath> : TPath, false>>;
+
+export type ExcludeServerValuesDeep<TObjectType> =
+    TObjectType extends T_DB_ServerTimestamp
+        ? Exclude<TObjectType, T_DB_ServerTimestamp>
+        : TObjectType extends T_DB_ServerIncrement
+            ? Exclude<TObjectType, T_DB_ServerIncrement>
+            : TObjectType extends Record<string, any>
+                ? {[K in keyof TObjectType]: ExcludeServerValuesDeep<TObjectType[K]>}
+                : Exclude<TObjectType, T_DB_ServerTimestamp>;
+export type Readonly<TObjectType> = ExcludeServerValuesDeep<TObjectType>;
+
+/* eslint-enable */
+
 /**
  * A `DatabaseReference` represents a specific location in your Database and can be used
  * for reading or writing data to that Database location.
@@ -90,7 +166,7 @@ export interface Query extends QueryContext {
  * `on*()` method. See {@link
  * https://firebase.google.com/docs/database/web/read-and-write}
  */
-export interface DatabaseReference extends Query {
+export interface DatabaseReference<TDB extends {}, TPath extends string[]> extends Query<TDB, TPath> {
   /**
    * The last part of the `DatabaseReference`'s path.
    *
@@ -106,10 +182,10 @@ export interface DatabaseReference extends Query {
    *
    * The parent of a root `DatabaseReference` is `null`.
    */
-  readonly parent: DatabaseReference | null;
+  readonly parent: DatabaseReference<TDB, L.Tail<TPath>> | null;
 
   /** The root `DatabaseReference` of the Database. */
-  readonly root: DatabaseReference;
+  readonly root: DatabaseReference<TDB, []>;
 }
 
 /**

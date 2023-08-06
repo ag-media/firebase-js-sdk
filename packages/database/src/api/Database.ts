@@ -225,7 +225,7 @@ export function repoManagerForceRestClient(forceRestClient: boolean): void {
 /**
  * Class representing a Firebase Realtime Database.
  */
-export class Database implements _FirebaseService {
+export class Database<TDB extends {} = {}> implements _FirebaseService {
   /** Represents a `Database` instance. */
   readonly 'type' = 'database';
 
@@ -314,13 +314,13 @@ export function forceLongPolling() {
  * provided, the SDK connects to the default instance of the Firebase App.
  * @returns The `Database` instance of the provided app.
  */
-export function getDatabase(
+export function getDatabase<TDB extends {}>(
   app: FirebaseApp = getApp(),
   url?: string
-): Database {
+): Database<TDB> {
   const db = _getProvider(app, 'database').getImmediate({
     identifier: url
-  }) as Database;
+  }) as Database<TDB>;
   if (!db._instanceStarted) {
     const emulator = getDefaultEmulatorHostnameAndPort('database');
     if (emulator) {
